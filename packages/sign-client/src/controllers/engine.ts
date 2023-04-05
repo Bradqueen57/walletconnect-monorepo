@@ -475,6 +475,8 @@ export class Engine extends IEngine {
         } else if (isJsonRpcResponse(payload)) {
           await this.client.core.history.resolve(payload);
           this.onRelayEventResponse({ topic, payload });
+        } else {
+          this.onRelayEventUnknownPayload({ topic, payload });
         }
       },
     );
@@ -527,6 +529,19 @@ export class Engine extends IEngine {
       default:
         return this.client.logger.info(`Unsupported response method ${resMethod}`);
     }
+  };
+
+  private onRelayEventUnknownPayload: EnginePrivate["onRelayEventUnknownPayload"] = async (
+    event,
+  ) => {
+    const { topic, payload } = event;
+    const { id } = payload;
+    const err = getInternalError(
+      "MISSING_OR_INVALID",
+      `Decoded payload is neither a request nor a response. Received: ${payload}`,
+    );
+    await this.sendError(id, topic, err);
+    this.client.logger.error(err);
   };
 
   // ---------- Relay Events Handlers --------------------------------- //
